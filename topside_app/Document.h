@@ -21,16 +21,16 @@ namespace Topside {
 
 		}
 
-		void add(Element* element) {
-			body.append(element);
+		void add(const Element&& element) {
+			body.append(std::move(element));
 		}
 
 		void addScript(const std::string& src) {
-			head.append(new Script{ src });
+			head.append(Script{ src });
 		}
 
 		void addStylesheet(const std::string& src) {
-			head.append(new Stylesheet{ src });
+			head.append(Stylesheet{ src });
 		}
 
 		std::string render() {

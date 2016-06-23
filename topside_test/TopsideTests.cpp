@@ -50,11 +50,11 @@ TEST_CASE("tag elements are rendered") {
 TEST_CASE("adding content to tags") {
 	ostringstream out;
 	SECTION("add text to tag") {
-		Tag{ "test" }.append(new Text{ "hello" })->render(out);
+		Tag{ "test" }.append(Text{ "hello" })->render(out);
 		REQUIRE(out.str() == "<test>hello</test>");
 	}
 	SECTION("add text to heading 1") {
-		Heading{ 1 }.append(new Text{ "hello" })->render(out);
+		Heading{ 1 }.append(Text{ "hello" })->render(out);
 		REQUIRE(out.str() == "<h1>hello</h1>");
 	}
 	SECTION("add text to heading 2") {
@@ -67,7 +67,7 @@ TEST_CASE("unordered lists") {
 	ostringstream out;
 
 	SECTION("add itmes to list") {
-		List{}.append(new ListItem{ "hello" })->append(new ListItem{ "world" })->render(out);
+		List{}.append(ListItem{ "hello" })->append(ListItem{ "world" })->render(out);
 		REQUIRE(out.str() == "<ul><li>hello<li>world</ul>");
 	}
 }

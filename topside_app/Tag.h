@@ -4,13 +4,13 @@
 #include <list>
 #include <string>
 #include <sstream>
-
+#include <memory>
 #include "Element.h"
 #include "Text.h"
 
 namespace Topside {
 	class Tag : public Element {
-		std::list<Element*> contents;
+		std::list<std::shared_ptr<Element>> contents;
 		std::string tag;
 		bool close;
 		std::unordered_map<std::string, std::string> attributes;
@@ -18,15 +18,15 @@ namespace Topside {
 		Tag(const std::string& tag, bool close = true) : tag{ tag }, close{ close } {}
 		
 		template <typename T>
-		Tag(const std::string& tag, T* element) :
+		Tag(const std::string& tag, const T& element) :
 			tag{ tag }, attributes{} {
 			append(std::move(element));
 		}
 
 		template <typename T, typename... Ts>
-		Tag(const std::string& tag, T* element, Ts*... elements) :
+		Tag(const std::string& tag, const T& element, const Ts&... elements) :
 			Tag(tag, elements...) {
-			prepend(element);
+			prepend(std::move(element));
 		}
 
 		virtual void render(std::ostringstream &out) const override {
@@ -34,19 +34,21 @@ namespace Topside {
 			for (auto a : attributes)
 				out << ' ' << a.first << "=\"" << a.second << "\"";
 			out << '>';
-			for (auto e : contents)
-				e->render(out);
+			for (auto it = begin(contents); it != end(contents); ++it)
+				it->get()->render(out);
 			if(close)
 				out << "</" << tag << '>';
 		}
 		
-		Tag* append(Element* element) {
-			contents.push_back(element);
+		template <typename T>
+		Tag* append(const T&& element) {
+			contents.emplace_back(std::make_shared<T>(element));
 			return this;
 		}
 		
-		Tag* prepend(Element* element) {
-			contents.push_front(element);
+		template <typename T>
+		Tag* prepend(const T&& element) {
+			contents.push_front(std::make_shared<T>(element));
 			return this;
 		}
 
@@ -107,7 +109,7 @@ namespace Topside {
 	public:
 		Paragraph() : Tag{ "p" } {}
 		Paragraph(const std::string& text) : Paragraph{} {
-			append(new Text{ text });
+			append(Text{ text });
 		}
 	};
 
@@ -118,7 +120,7 @@ namespace Topside {
 				throw(std::invalid_argument("only 1-6 are valid"));
 		}
 		Heading(int level, const std::string& text) : Heading{ level } {
-			append(new Text{ text });
+			append(Text{ text });
 		}
 	};
 
@@ -126,7 +128,7 @@ namespace Topside {
 	public:
 		ListItem() : Tag{ "li", false } {}
 		ListItem(const std::string& text) : ListItem{} {
-			append(new Text{ text });
+			append(Text{ text });
 		}
 	};
 
@@ -140,21 +142,21 @@ namespace Topside {
 	class Division : public Tag {
 	public:
 		template <typename... Ts>
-		Division(Ts*... elements) : Tag{ "div", elements... } {}
+		Division(const Ts&... elements) : Tag{ "div", elements... } {}
 	};
 
 	class List : public Tag {
 	public:
 		List() : Tag{ "ul" } {}
 		template <typename... Ts>
-		List(Ts*... elements) : Tag{ "ul", elements... } {}
+		List(const Ts&... elements) : Tag{ "ul", elements... } {}
 	};
 
 	class NavList : public List {
 	public:
 		NavList() {}
 		template <typename... Ts>
-		NavList(Ts*... elements) : List{ elements... } {
+		NavList(const Ts&&... elements) : List{ elements... } {
 			addClass("uk-navbar-nav uk-hidden-small");
 		}
 	};
@@ -162,7 +164,7 @@ namespace Topside {
 	class NavItem : public ListItem {
 	public:
 		NavItem(const std::string& text, const std::string& href) {
-			append((new Anchor{ href })->append(new Text{ text }));
+			append(Anchor{ href }.append(Text{ text }));
 		}
 	};
 
@@ -170,7 +172,7 @@ namespace Topside {
 	public:
 		Container() {}
 		template <typename... Ts>
-		Container(Ts*... elements) : Division{ elements... } {
+		Container(const Ts&&... elements) : Division{ elements... } {
 			addClass("uk-container uk-container-center uk-margin-top uk-margin-bottom");
 		}
 	};
@@ -179,17 +181,17 @@ namespace Topside {
 	public:
 		Panel() {}
 		template <typename... Ts>
-		Panel(Ts*... elements) : Division{ elements... } {
+		Panel(const Ts&&... elements) : Division{ elements... } {
 			addClass("uk-panel uk-panel-box");
 		}
 	};
 
 	class NavBar : public Tag {
 	public:
-		NavBar(const std::string& text, NavList* navlist) : Tag{ "nav" } {
+		NavBar(const std::string& text, const NavList&& navlist) : Tag{ "nav" } {
 			addClass("uk-navbar uk-margin-bottom");
-			append((new Anchor{ "#" })->addClass("uk-navbar-brand uk-hidden-small")->append(new Text{ text }));
-			append(navlist);
+			append(Anchor{ "#" }.addClass("uk-navbar-brand uk-hidden-small")->append(Text{ text }));
+			append(std::move(navlist));
 		}
 	};
 
@@ -197,7 +199,7 @@ namespace Topside {
 	public:
 		Button(const std::string& text, const std::string& href = "#") : Anchor{href} {
 			addClass("uk-button");
-			append(new Text{ text });
+			append(Text{ text });
 		}
 	};
 
